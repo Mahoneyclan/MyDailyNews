@@ -386,7 +386,7 @@ def get_playlist_episode_uris(sp: spotipy.Spotify, playlist_id: str) -> list[str
     while True:
         results = sp.playlist_items(
             playlist_id,
-            fields="items(track(uri)),next",
+            fields="items(item(uri)),next",
             limit=100,
             offset=offset,
             additional_types=("track", "episode"),
@@ -396,7 +396,8 @@ def get_playlist_episode_uris(sp: spotipy.Spotify, playlist_id: str) -> list[str
             break
 
         for item in items:
-            track = item.get("track") or {}
+            # Spotify nests both tracks and episodes under "item" (not "track") in this endpoint.
+            track = item.get("item") or {}
             if track.get("uri"):
                 uris.append(track["uri"])
 
