@@ -1,6 +1,6 @@
 # My Daily News
 
-Automatically builds a personalised **My Daily News** playlist in your Spotify account each morning, containing the latest episode from a fixed list of Australian news podcasts.
+Automatically builds a personalised **My Daily News** playlist in your Spotify account each morning, containing the latest unheard episode from a fixed list of priority Australian news podcasts plus every other podcast show you follow on Spotify.
 
 Default behaviour:
 - Fetches the latest episode from 4 priority Australian news podcasts, always in this order:
@@ -8,6 +8,9 @@ Default behaviour:
   2. ABC News Daily
   3. SBS News Headlines
   4. The Quicky
+- Then does the same for every other show you follow (saved in your Spotify library), alphabetically
+- Skips any episode older than 30 days, and skips episodes Spotify says you've already fully played — falling back to an older unheard episode of the same show if one exists within that window
+- Before touching Spotify, checks what's already in the playlist and only rewrites it if the episode list actually changed
 - Creates or overwrites a private playlist called **My Daily News**
 - Runs automatically at **5:00 AM** daily via LaunchAgent
 
@@ -87,10 +90,14 @@ Open `daily_news.py` and edit the **CONFIGURATION** block near the top:
 
 | Variable | Default | What it does |
 |---|---|---|
-| `PRIORITY_PODCAST_IDS` | 4 Australian news shows | Spotify show IDs always included, always in order |
+| `PRIORITY_PODCAST_IDS` | 4 Australian news shows | Spotify show IDs always considered first, always in order |
+| `MAX_EPISODE_AGE_DAYS` | `30` | Episodes older than this are treated as stale and never added |
+| `EPISODE_LOOKBACK` | `5` | How many recent episodes per show to check when the latest one is already listened to |
 | `PLAYLIST_NAME` | `"My Daily News"` | Name of the Spotify playlist |
 
-To add, remove, or reorder shows, edit `PRIORITY_PODCAST_IDS` and `PRIORITY_PODCAST_NAMES` at the top of `daily_news.py`.
+To add, remove, or reorder priority shows, edit `PRIORITY_PODCAST_IDS` and `PRIORITY_PODCAST_NAMES` at the top of `daily_news.py`. Every other show you follow on Spotify (visible under Your Library → Podcasts) is picked up automatically — no code changes needed.
+
+> **Re-authorizing:** this version requests two extra Spotify permissions (`user-library-read` to see followed shows, and `user-read-playback-position` to know what you've listened to). The next run will detect this and open a browser window to re-approve access — this is expected, one-time, and normal.
 
 ---
 
@@ -180,6 +187,7 @@ launchctl list | grep mahoney.dailynews
 | `Missing required environment variables` | `.env` not set up | Follow Step 3 |
 | `Authentication failed` | Wrong credentials or redirect URI | Double-check `.env` and the Spotify Dashboard redirect URI |
 | `No episodes found for …` | Show ID changed or show is inactive | Find the new ID in the Spotify app and update `PRIORITY_PODCAST_IDS` |
+| `No unheard episode within the last 30 days for …` | You've already listened to everything recent, or the show hasn't published lately | Nothing to fix — the show is just skipped for today |
 | Script doesn't run at 5 AM | Mac was asleep | Set a scheduled wake with `pmset` |
 | GDrive not mounted when script runs | Drive mounted after script fires | The wrapper script waits up to 2 minutes; check `/tmp/daily_news_error.log` |
 
@@ -193,8 +201,9 @@ MyDailyNews/
 ├── requirements.txt    ← Python dependencies
 ├── .env.example        ← Template for your credentials (safe to commit)
 ├── .env                ← Your actual credentials (never committed)
-├── .gitignore          ← Excludes .env, .cache, logs, etc.
+├── .gitignore          ← Excludes .env, .cache, history.json, logs, etc.
 ├── .cache              ← Spotipy auth token (auto-generated, never committed)
+├── history.json        ← Log of episodes added, pruned after 30 days (auto-generated, never committed)
 └── README.md           ← This file
 
 ~/.local/bin/
